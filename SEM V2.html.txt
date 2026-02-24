@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Supplier Email Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #09b367;
+      --green-dark: #078c52;
+      --green-light: #e6f9f1;
+      --green-glow: rgba(9, 179, 103, 0.15);
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --blue: #3b82f6;
+      --bg: #f0f7f4;
+      --surface: #ffffff;
+      --surface2: #f8fdfb;
+      --border: rgba(9, 179, 103, 0.12);
+      --text-primary: #0d1f17;
+      --text-secondary: #4a6b5a;
+      --text-muted: #8aab99;
+      --shadow-sm: 0 1px 3px rgba(9,50,30,0.06), 0 1px 2px rgba(9,50,30,0.04);
+      --shadow-md: 0 4px 16px rgba(9,50,30,0.08), 0 2px 6px rgba(9,50,30,0.05);
+      --shadow-lg: 0 20px 60px rgba(9,50,30,0.12), 0 8px 20px rgba(9,50,30,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 800px 600px at 10% 20%, rgba(9,179,103,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 600px 500px at 90% 80%, rgba(9,179,103,0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app { position: relative; z-index: 1; }
+
+    /* ── Header ── */
+    header {
+      padding: 32px 40px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+
+    .logo-dot {
+      width: 10px; height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: livePulse 2s ease-in-out infinite;
+    }
+
+    @keyframes livePulse {
+      0%, 100% { box-shadow: 0 0 0 0 var(--green-glow); opacity: 1; }
+      50% { box-shadow: 0 0 0 8px transparent; opacity: 0.7; }
+    }
+
+    .logo-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .refresh-info {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ── Page title ── */
+    .page-title {
+      text-align: center;
+      padding: 40px 40px 0;
+    }
+
+    .page-title h1 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 800;
+      color: var(--text-primary);
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .page-title h1 span { color: var(--green); }
+
+    .page-title p {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ── Alert banner ── */
+    .alert-banner {
+      margin: 24px 40px 0;
+      background: linear-gradient(135deg, #fef2f2, #fff5f5);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      align-items: center;
+      gap: 12px;
+      animation: alertSlide 0.4s ease;
+    }
+
+    .alert-banner.hidden { display: none !important; }
+    .alert-banner:not(.hidden) { display: flex; }
+
+    @keyframes alertSlide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert-dot {
+      width: 8px; height: 8px; min-width: 8px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: livePulse 1.5s ease-in-out infinite;
+    }
+
+    .alert-text { font-size: 13px; font-weight: 600; color: #991b1b; }
+
+    /* ── Summary view ── */
+    #summary-page { padding: 32px 40px 40px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── Stat card ── */
+    .stat-card {
+      background: var(--surface);
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      padding: 32px 28px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--green);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+    .stat-card:hover::before { transform: scaleX(1); }
+    .stat-card.open-card::before { background: var(--red); }
+    .stat-card.inprogress-card::before { background: var(--green); }
+
+    .card-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-icon.open-icon { background: #fef2f2; }
+    .card-icon.progress-icon { background: var(--green-light); }
+
+    .stat-number {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin-bottom: 6px;
+      transition: color 0.3s;
+    }
+
+    .stat-number.red { color: var(--red); }
+    .stat-number.green { color: var(--green); }
+
+    .stat-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .stat-card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .stat-card-footer svg { width: 14px; height: 14px; }
+
+    .aging-pills { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+
+    .aging-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      background: var(--surface2);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .aging-pill .pill-count {
+      background: var(--green);
+      color: white;
+      border-radius: 20px;
+      padding: 1px 8px;
+      font-size: 11px;
+    }
+
+    .aging-pill .pill-count.warn { background: var(--amber); }
+    .aging-pill .pill-count.danger { background: var(--red); }
+
+    .click-hint {
+      position: absolute;
+      bottom: 16px; right: 16px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--green-light);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--green);
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .stat-card:hover .click-hint { background: var(--green); color: white; }
+
+    .stat-card { opacity: 0; animation: cardIn 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Details page ── */
+    #details-page {
+      display: none;
+      padding: 24px 40px 40px;
+      animation: pageIn 0.35s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .details-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .details-left { display: flex; align-items: center; gap: 16px; }
+
+    .back-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 16px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-family: 'Manrope', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .back-btn:hover { background: var(--green-light); color: var(--green-dark); border-color: rgba(9,179,103,0.3); }
+
+    .details-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .action-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      background: var(--green);
+      border: none;
+      color: white;
+      font-family: 'Manrope', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 12px rgba(9,179,103,0.3);
+    }
+
+    .action-btn:hover { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(9,179,103,0.4); }
+
+    /* ── Filter chips ── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+
+    .chip:hover { border-color: var(--green); color: var(--green); }
+    .chip.active { background: var(--green); color: white; border-color: var(--green); }
+    .chip.cancel-chip.active { background: var(--red); border-color: var(--red); }
+    .chip.change-chip.active { background: var(--amber); border-color: var(--amber); }
+
+    .chip-count {
+      background: rgba(255,255,255,0.25);
+      border-radius: 10px;
+      padding: 0 6px;
+      font-size: 11px;
+    }
+
+    .chip:not(.active) .chip-count { background: var(--green-light); color: var(--green); }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--surface);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+
+    /* Horizontal scroll on small screens */
+    .table-scroll { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+
+    thead th {
+      padding: 13px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      transition: background 0.15s;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr.cancel-row { background: rgba(239,68,68,0.03); }
+    tbody tr.cancel-row:hover { background: rgba(239,68,68,0.06); }
+    tbody tr.change-row { background: rgba(245,158,11,0.03); }
+    tbody tr.change-row:hover { background: rgba(245,158,11,0.06); }
+
+    td {
+      padding: 13px 16px;
+      font-size: 13px;
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    .td-truncate {
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Booking ref pill */
+    .ref-pill {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      background: var(--green-light);
+      color: var(--green-dark);
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .ref-pill.empty {
+      background: #f3f4f6;
+      color: var(--text-muted);
+      font-family: 'Manrope', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    /* Type tag */
+    .type-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tag-cancellation { background: rgba(239,68,68,0.1); color: #dc2626; }
+    .tag-change { background: rgba(245,158,11,0.1); color: #d97706; }
+    .tag-general { background: var(--green-light); color: var(--green-dark); }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .badge-open { background: #fef3c7; color: #92400e; }
+    .badge-inprogress { background: #dbeafe; color: #1e40af; }
+    .badge-closed { background: #dcfce7; color: #166534; }
+    .badge-notapplicable { background: #f3f4f6; color: #374151; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; font-weight: 500; }
+
+    /* Loading */
+    .loading-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      header, #summary-page, #details-page { padding-left: 20px; padding-right: 20px; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .details-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-dot"></div>
+      <span class="logo-text">Live Tracker</span>
+    </div>
+    <span class="refresh-info" id="lastRefreshed">Loading…</span>
+  </header>
+
+  <!-- Title -->
+  <div class="page-title">
+    <h1>Supplier <span>Inbox</span></h1>
+    <p>Every email matters — stay on top of what needs action</p>
+  </div>
+
+  <!-- Alert banner — only shown when open cancellations exist -->
+  <div class="alert-banner hidden" id="alertBanner">
+    <div class="alert-dot"></div>
+    <span class="alert-text" id="alertText"></span>
+  </div>
+
+  <!-- Summary Page -->
+  <div id="summary-page">
+    <div id="loading-summary" class="loading-wrap">
+      <div class="spinner"></div> Fetching latest emails…
+    </div>
+    <div class="stats-grid" id="statsGrid" style="display:none;"></div>
+  </div>
+
+  <!-- Details Page -->
+  <div id="details-page">
+    <div class="details-header">
+      <div class="details-left">
+        <button class="back-btn" onclick="backToSummary()">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+          </svg>
+          Back
+        </button>
+        <span class="details-title" id="detailsTitle">Emails</span>
+      </div>
+      <button class="action-btn" onclick="window.open('https://forms.gle/vQj6t24KsFKLsAHq8','_blank')">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14">
+          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+        </svg>
+        Update Status
+      </button>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="filter-row" id="filterRow"></div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-scroll" id="tableWrap"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Config ──────────────────────────────────────────────────────────
+  const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTLiqTx5i_HBFszRofx4ItO9IZPTGNJxN87iAK4ckHSyFMfFeN1F56M7RQ17LBLBZdqZHmB8UXck4GE/pub?gid=307971943&single=true&output=csv";
+  const FORM_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTLiqTx5i_HBFszRofx4ItO9IZPTGNJxN87iAK4ckHSyFMfFeN1F56M7RQ17LBLBZdqZHmB8UXck4GE/pub?gid=559400576&single=true&output=csv";
+
+  const EXCLUDED_REPLYTO = [
+    "GetYourGuide <do-not-reply@notification.getyourguide.com>",
+    "Viator <no-reply@m1.viator.com>"
+  ];
+
+  // Keyword fallback for emails without a stored 'type' (old data)
+  const CANCEL_KW = ['cancelled','cancellation','has been cancelled','booking cancelled','tour cancelled','activity cancelled','experience cancelled'];
+  const CHANGE_KW = ['rescheduled','date change','time change','booking changed','modified','updated booking','schedule change'];
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  function detectType(subject, storedType) {
+    if (storedType && storedType.trim()) return storedType.trim().toLowerCase();
+    const s = (subject || '').toLowerCase();
+    if (CANCEL_KW.some(k => s.includes(k))) return 'cancellation';
+    if (CHANGE_KW.some(k => s.includes(k))) return 'change';
+    return 'general';
+  }
+
+  function extractName(email) {
+    if (!email) return '-';
+    const m = email.match(/([^@]+)@/);
+    if (!m) return '-';
+    const f = m[1].split('.')[0];
+    return f[0].toUpperCase() + f.slice(1);
+  }
+
+  function hoursDiff(ts) {
+    if (!ts) return 0;
+    return (Date.now() - new Date(ts)) / 3600000;
+  }
+
+  function parseCSV(text) {
+    const rows = []; let row = [], val = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i], n = text[i + 1];
+      if (c === '"' && inQ && n === '"') { val += '"'; i++; }
+      else if (c === '"') inQ = !inQ;
+      else if (c === ',' && !inQ) { row.push(val); val = ''; }
+      else if ((c === '\n' || c === '\r') && !inQ) {
+        if (val || row.length) { row.push(val); rows.push(row); row = []; val = ''; }
+      } else val += c;
+    }
+    if (val || row.length) { row.push(val); rows.push(row); }
+    return rows;
+  }
+
+  async function fetchCSV(url) {
+    const r = await fetch(url);
+    const t = await r.text();
+    const rows = parseCSV(t);
+    const hdrs = rows[0].map(h => h.trim());
+    return rows.slice(1).map(r => Object.fromEntries(hdrs.map((h, i) => [h, (r[i] || '').trim()])));
+  }
+
+  function animateCount(el, target) {
+    const dur = 600, start = performance.now();
+    const from = parseInt(el.textContent) || 0;
+    function step(now) {
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(from + (target - from) * ease);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ── Load dashboard ────────────────────────────────────────────────────
+  async function loadDashboard() {
+    const [emailData, formData] = await Promise.all([fetchCSV(SHEET_URL), fetchCSV(FORM_URL)]);
+
+    // Build status map from form responses
+    const statusMap = {};
+    formData.forEach(r => {
+      const id = (r.msgID || r.msgId || '').trim();
+      if (!id) return;
+      statusMap[id] = {
+        status:    (r.Status || r.status || 'Closed').trim(),
+        agent:     extractName((r['Email Address'] || r.agentEmail || r.email || '').trim()),
+        timestamp: (r.Timestamp || r.timestamp || '').trim()
+      };
+    });
+
+    // Filter out closed/not-applicable and excluded senders
+    const filtered = emailData.filter(r => {
+      const replyto = (r.replyto || '').trim();
+      const id      = (r.msgId || '').trim();
+      const type    = detectType(r.subject, r.type);
+      const isCritical = type === 'cancellation' || type === 'change';
+
+      const fm = statusMap[id];
+      const fmStatus = fm ? fm.status.toLowerCase() : '';
+      if (fmStatus === 'closed' || fmStatus === 'not applicable') return false;
+
+      if (!isCritical) {
+        if (EXCLUDED_REPLYTO.some(x => replyto.includes(x))) return false;
+        if (!replyto) return false;
+      }
+      return true;
+    });
+
+    // Enrich each email with status info and detected type
+    filtered.forEach(e => {
+      const fm = statusMap[e.msgId];
+      e.emailType     = detectType(e.subject, e.type);
+      e.formStatus    = fm ? fm.status : 'Open';
+      e.assignedAgent = fm ? fm.agent  : '-';
+      e.formTimestamp = fm ? fm.timestamp : null;
+      // bookingRef comes from column 10 written by Apps Script v3
+      e.bookingRef    = (e.bookingRef || '').trim();
+    });
+
+    // Split into segments
+    const openEmails       = filtered.filter(e => e.formStatus === 'Open');
+    const inProgressEmails = filtered.filter(e => e.formStatus.toLowerCase() === 'in-progress');
+    const openCancels      = openEmails.filter(e => e.emailType === 'cancellation');
+
+    // Aging buckets for in-progress
+    let a24 = 0, a48 = 0, a72 = 0;
+    inProgressEmails.forEach(e => {
+      const h = hoursDiff(e.formTimestamp);
+      if (h > 72) a72++; else if (h > 48) a48++; else if (h > 24) a24++;
+    });
+
+    // Show cancellation alert banner if needed
+    if (openCancels.length > 0) {
+      const b = document.getElementById('alertBanner');
+      b.classList.remove('hidden');
+      document.getElementById('alertText').textContent =
+        `${openCancels.length} unactioned cancellation${openCancels.length > 1 ? 's' : ''} — needs immediate attention`;
+    }
+
+    // Render stat cards
+    const grid = document.getElementById('statsGrid');
+    grid.innerHTML = `
+      <div class="stat-card open-card" onclick="showDetails('open')">
+        <div class="card-icon open-icon">📬</div>
+        <div class="stat-number red" id="openCount">0</div>
+        <div class="stat-label">Open</div>
+        <div class="stat-card-footer">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg>
+          Click to review all open
+        </div>
+        <div class="click-hint">→</div>
+      </div>
+
+      <div class="stat-card inprogress-card" onclick="showDetails('inprogress')">
+        <div class="card-icon progress-icon">⚙️</div>
+        <div class="stat-number green" id="inprogressCount">0</div>
+        <div class="stat-label">In-Progress</div>
+        <div class="aging-pills">
+          <div class="aging-pill">
+            <span>&gt; 24 hrs</span>
+            <span class="pill-count warn" id="a24">0</span>
+          </div>
+          <div class="aging-pill">
+            <span>&gt; 48 hrs</span>
+            <span class="pill-count warn" id="a48">0</span>
+          </div>
+          <div class="aging-pill">
+            <span>&gt; 72 hrs</span>
+            <span class="pill-count danger" id="a72">0</span>
+          </div>
+        </div>
+        <div class="click-hint">→</div>
+      </div>
+    `;
+
+    grid.style.display = 'grid';
+    document.getElementById('loading-summary').style.display = 'none';
+
+    animateCount(document.getElementById('openCount'), openEmails.length);
+    animateCount(document.getElementById('inprogressCount'), inProgressEmails.length);
+    animateCount(document.getElementById('a24'), a24);
+    animateCount(document.getElementById('a48'), a48);
+    animateCount(document.getElementById('a72'), a72);
+
+    document.getElementById('lastRefreshed').textContent =
+      `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    window._segments = { open: openEmails, inprogress: inProgressEmails };
+  }
+
+  // ── Details view ──────────────────────────────────────────────────────
+  function showDetails(segment) {
+    document.getElementById('summary-page').style.display = 'none';
+    document.getElementById('details-page').style.display = 'block';
+
+    const data = window._segments[segment] || [];
+    const titleMap = { open: 'Open Emails', inprogress: 'In-Progress Emails' };
+    document.getElementById('detailsTitle').textContent = titleMap[segment] || 'Emails';
+
+    // Type breakdown for filter chips
+    const types = {
+      all:          data,
+      cancellation: data.filter(e => e.emailType === 'cancellation'),
+      change:       data.filter(e => e.emailType === 'change'),
+      general:      data.filter(e => e.emailType === 'general'),
+    };
+
+    const fr = document.getElementById('filterRow');
+    const chips = [
+      { key: 'all',          label: 'All',           emoji: ''   },
+      { key: 'cancellation', label: 'Cancellations', emoji: '🚨', cls: 'cancel-chip' },
+      { key: 'change',       label: 'Changes',       emoji: '🔄', cls: 'change-chip' },
+      { key: 'general',      label: 'General',       emoji: '📧' },
+    ];
+
+    fr.innerHTML = chips.map(c => `
+      <span class="chip ${c.cls || ''} ${c.key === 'all' ? 'active' : ''}"
+            onclick="applyFilter('${c.key}')"
+            id="chip-${c.key}">
+        ${c.emoji} ${c.label}
+        <span class="chip-count">${types[c.key].length}</span>
+      </span>
+    `).join('');
+
+    window._detailData = types;
+    renderTable(types.all);
+  }
+
+  function applyFilter(key) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('chip-' + key).classList.add('active');
+    renderTable(window._detailData[key]);
+  }
+
+  function backToSummary() {
+    document.getElementById('details-page').style.display = 'none';
+    document.getElementById('summary-page').style.display = 'block';
+  }
+
+  function renderTable(data) {
+    const wrap = document.getElementById('tableWrap');
+
+    if (!data || data.length === 0) {
+      wrap.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🎉</div>
+          <p>Nothing here — you're all caught up!</p>
+        </div>`;
+      return;
+    }
+
+    const rows = data.map(d => {
+      const rowClass  = d.emailType === 'cancellation' ? 'cancel-row' : d.emailType === 'change' ? 'change-row' : '';
+      const tagClass  = `tag-${d.emailType || 'general'}`;
+      const tagLabel  = d.emailType === 'cancellation' ? '🚨 Cancellation' : d.emailType === 'change' ? '🔄 Change' : '📧 General';
+      const statusCls = 'badge-' + (d.formStatus || 'open').toLowerCase().replace(/[^a-z]/g, '');
+      const dateStr   = d.date ? new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
+
+      // Booking ref — show pill if exists, dash if not
+      const refHtml = d.bookingRef
+        ? `<span class="ref-pill">${d.bookingRef}</span>`
+        : `<span class="ref-pill empty">—</span>`;
+
+      return `
+        <tr class="${rowClass}">
+          <td><span class="type-tag ${tagClass}">${tagLabel}</span></td>
+          <td class="td-truncate" title="${d.from || ''}">${d.from || '-'}</td>
+          <td class="td-truncate" style="max-width:240px;" title="${d.subject || ''}">${d.subject || '-'}</td>
+          <td>${refHtml}</td>
+          <td style="white-space:nowrap;color:var(--text-muted);font-size:12px;">${dateStr}</td>
+          <td><span class="status-badge ${statusCls}">${d.formStatus}</span></td>
+          <td style="font-weight:600;">${d.assignedAgent}</td>
+        </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>From</th>
+            <th>Subject</th>
+            <th>Booking Ref</th>
+            <th>Received</th>
+            <th>Status</th>
+            <th>Agent</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // ── Keep-alive (prevent TV/display from sleeping) ─────────────────────
+  setInterval(() => location.reload(), 5 * 60 * 1000);
+  setInterval(() => document.body.dispatchEvent(new MouseEvent('mousemove', {
+    bubbles: true,
+    clientX: Math.random() * window.innerWidth,
+    clientY: Math.random() * window.innerHeight
+  })), 2 * 60 * 1000);
+
+  loadDashboard();
+</script>
+</body>
+</html>
