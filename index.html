@@ -661,6 +661,7 @@
       const replyto = (r.replyto || '').trim();
       const id      = (r.msgId || '').trim();
       const type    = detectType(r.subject, r.type);
+      const isCritical = type === "cancellation" || type === "change" || type ==="general";
 
       const fm = statusMap[id];
       const fmStatus = fm ? fm.status.toLowerCase() : '';
@@ -872,5 +873,6 @@
 </script>
 </body>
 </html>
+
 
 
