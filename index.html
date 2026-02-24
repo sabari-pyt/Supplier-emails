@@ -661,7 +661,6 @@
       const replyto = (r.replyto || '').trim();
       const id      = (r.msgId || '').trim();
       const type    = detectType(r.subject, r.type);
-      const isCritical = type === 'cancellation' || type === 'change';
 
       const fm = statusMap[id];
       const fmStatus = fm ? fm.status.toLowerCase() : '';
@@ -683,6 +682,7 @@
       e.formTimestamp = fm ? fm.timestamp : null;
       // bookingRef comes from column 10 written by Apps Script v3
       e.bookingRef    = (e.bookingRef || '').trim();
+      e.msgId = (e.msgId || "").trim();
     });
 
     // Split into segments
@@ -832,6 +832,7 @@
       return `
         <tr class="${rowClass}">
           <td><span class="type-tag ${tagClass}">${tagLabel}</span></td>
+          <td style="font-family:Courier New, monospace;font-size:11px;white-space:nowrap;"> ${d.msgId || "-"}</td>
           <td class="td-truncate" title="${d.from || ''}">${d.from || '-'}</td>
           <td class="td-truncate" style="max-width:240px;" title="${d.subject || ''}">${d.subject || '-'}</td>
           <td>${refHtml}</td>
@@ -846,6 +847,7 @@
         <thead>
           <tr>
             <th>Type</th>
+            <th>Msg ID</th>
             <th>From</th>
             <th>Subject</th>
             <th>Booking Ref</th>
@@ -870,4 +872,5 @@
 </script>
 </body>
 </html>
+
 
