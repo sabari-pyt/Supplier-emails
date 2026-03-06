@@ -472,8 +472,8 @@
       const statusCls = 'badge-'+(d.formStatus||'open').toLowerCase().replace(/[^a-z]/g,'');
       const dateStr   = d.date ? new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
       const refHtml   = d.bookingRef ? `<span class="ref-pill">${d.bookingRef}</span>` : `<span class="ref-pill empty">—</span>`;
-      // Use JSON.stringify to safely escape any special chars in subject
-      const safeSubject = JSON.stringify(d.subject || '');
+      // Safely encode subject for data attribute — handles all special chars
+      const safeAttr  = (d.subject||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 
       return `
         <tr class="${rowClass}">
@@ -482,8 +482,8 @@
           <td class="td-truncate" title="${d.from||''}">${d.from||'-'}</td>
           <td>
             <div class="subject-cell">
-              <span class="subject-text" title="${d.subject||''}">${d.subject||'-'}</span>
-              <button class="copy-btn" onclick="copySubject(${safeSubject})" title="Copy full subject">
+              <span class="subject-text" title="${safeAttr}">${d.subject||'-'}</span>
+              <button class="copy-btn js-copy-subject" data-subject="${safeAttr}" title="Copy full subject">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="5" y="5" width="9" height="9" rx="1.5"/>
                   <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5"/>
@@ -508,6 +508,11 @@
         </thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    // Attach click handlers after DOM is rendered — reads data-subject attribute
+    wrap.querySelectorAll('.js-copy-subject').forEach(btn => {
+      btn.addEventListener('click', () => copySubject(btn.dataset.subject));
+    });
   }
 
   // ── Keep-alive ────────────────────────────────────────────────────────
