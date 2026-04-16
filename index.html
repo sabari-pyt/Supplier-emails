@@ -118,7 +118,6 @@
     td { padding: 13px 16px; font-size: 13px; color: var(--text-primary); vertical-align: middle; }
     .td-truncate { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* ── Subject cell with copy button ── */
     .subject-cell { display: flex; align-items: center; gap: 6px; max-width: 240px; }
     .subject-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
     .copy-btn {
@@ -130,7 +129,6 @@
     .copy-btn:hover { background: var(--green-light); border-color: var(--green); color: var(--green); transform: scale(1.08); }
     .copy-btn svg { width: 12px; height: 12px; }
 
-    /* ── Toast ── */
     #toast {
       position: fixed; bottom: 32px; left: 50%;
       transform: translateX(-50%) translateY(16px);
@@ -226,7 +224,6 @@
 
 </div>
 
-<!-- Toast -->
 <div id="toast">
   <span class="toast-tick">
     <svg viewBox="0 0 10 10" fill="none" stroke="white" stroke-width="1.8">
@@ -304,7 +301,6 @@
     requestAnimationFrame(step);
   }
 
-  // ── Copy + Toast ──────────────────────────────────────────────────────
   let toastTimer = null;
   function copySubject(text) {
     navigator.clipboard.writeText(text).then(() => {
@@ -315,29 +311,48 @@
     });
   }
 
-  // ── Load dashboard ────────────────────────────────────────────────────
   async function loadDashboard() {
     const [emailData, formData] = await Promise.all([fetchCSV(SHEET_URL), fetchCSV(FORM_URL)]);
 
+    // ── FIX: Keep only the MOST RECENT form submission per msgId ──────────
+    // The form sheet appends a new row every time someone submits.
+    // If an agent moved an email Open→In-Progress, then later In-Progress→Closed,
+    // there are two rows for the same msgId. We must use the latest one (by Timestamp).
     const statusMap = {};
     formData.forEach(r => {
-      const id = (r.msgID||r.msgId||'').trim();
+      const id = (r.msgID || r.msgId || '').trim();
       if (!id) return;
-      statusMap[id] = {
-        status:    (r.Status||r.status||'Closed').trim(),
-        agent:     extractName((r['Email Address']||r.agentEmail||r.email||'').trim()),
-        timestamp: (r.Timestamp||r.timestamp||'').trim()
+
+      const incoming = {
+        status:    (r.Status || r.status || 'Closed').trim(),
+        agent:     extractName((r['Email Address'] || r.agentEmail || r.email || '').trim()),
+        timestamp: (r.Timestamp || r.timestamp || '').trim()
       };
+
+      // If we already have an entry for this msgId, only replace it if
+      // the incoming row has a LATER (or equal) timestamp.
+      if (statusMap[id]) {
+        const existingTs = new Date(statusMap[id].timestamp || 0).getTime();
+        const incomingTs = new Date(incoming.timestamp || 0).getTime();
+        if (incomingTs >= existingTs) {
+          statusMap[id] = incoming;
+        }
+        // else: keep the existing (more recent) entry — do nothing
+      } else {
+        statusMap[id] = incoming;
+      }
     });
+    // ─────────────────────────────────────────────────────────────────────
 
     const filtered = emailData.filter(r => {
-      const replyto = (r.replyto||'').trim();
-      const id      = (r.msgId||'').trim();
+      const replyto = (r.replyto || '').trim();
+      const id      = (r.msgId || '').trim();
       const type    = detectType(r.subject, r.type);
-      const isCritical = type==='cancellation' || type==='change' || type==='general';
+      const isCritical = type === 'cancellation' || type === 'change' || type === 'general';
       const fm = statusMap[id];
-      const fmStatus = fm ? fm.status.toLowerCase() : '';
-      if (fmStatus==='closed' || fmStatus==='not applicable') return false;
+      // Normalise to lowercase + trimmed for reliable comparison
+      const fmStatus = fm ? fm.status.toLowerCase().trim() : '';
+      if (fmStatus === 'closed' || fmStatus === 'not applicable') return false;
       if (!isCritical) {
         if (EXCLUDED_REPLYTO.some(x => replyto.includes(x))) return false;
         if (!replyto) return false;
@@ -351,25 +366,25 @@
       e.formStatus    = fm ? fm.status : 'Open';
       e.assignedAgent = fm ? fm.agent  : '-';
       e.formTimestamp = fm ? fm.timestamp : null;
-      e.bookingRef    = (e.bookingRef||'').trim();
-      e.msgId         = (e.msgId||'').trim();
+      e.bookingRef    = (e.bookingRef || '').trim();
+      e.msgId         = (e.msgId || '').trim();
     });
 
-    const openEmails       = filtered.filter(e => e.formStatus==='Open');
-    const inProgressEmails = filtered.filter(e => e.formStatus.toLowerCase()==='in-progress');
-    const openCancels      = openEmails.filter(e => e.emailType==='cancellation');
+    const openEmails       = filtered.filter(e => e.formStatus === 'Open');
+    const inProgressEmails = filtered.filter(e => e.formStatus.toLowerCase().trim() === 'in-progress');
+    const openCancels      = openEmails.filter(e => e.emailType === 'cancellation');
 
     let a24=0, a48=0, a72=0;
     inProgressEmails.forEach(e => {
       const h = hoursDiff(e.formTimestamp);
-      if (h>72) a72++; else if (h>48) a48++; else if (h>24) a24++;
+      if (h > 72) a72++; else if (h > 48) a48++; else if (h > 24) a24++;
     });
 
     if (openCancels.length > 0) {
       const b = document.getElementById('alertBanner');
       b.classList.remove('hidden');
       document.getElementById('alertText').textContent =
-        `${openCancels.length} unactioned cancellation${openCancels.length>1?'s':''} — needs immediate attention`;
+        `${openCancels.length} unactioned cancellation${openCancels.length > 1 ? 's' : ''} — needs immediate attention`;
     }
 
     const grid = document.getElementById('statsGrid');
@@ -407,36 +422,35 @@
     animateCount(document.getElementById('a72'), a72);
 
     document.getElementById('lastRefreshed').textContent =
-      `Updated ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+      `Updated ${new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}`;
 
     window._segments = { open: openEmails, inprogress: inProgressEmails };
   }
 
-  // ── Details ───────────────────────────────────────────────────────────
   function showDetails(segment) {
     document.getElementById('summary-page').style.display = 'none';
     document.getElementById('details-page').style.display = 'block';
 
     const data = window._segments[segment] || [];
     document.getElementById('detailsTitle').textContent =
-      segment==='open' ? 'Open Emails' : 'In-Progress Emails';
+      segment === 'open' ? 'Open Emails' : 'In-Progress Emails';
 
     const types = {
       all:          data,
-      cancellation: data.filter(e => e.emailType==='cancellation'),
-      change:       data.filter(e => e.emailType==='change'),
-      general:      data.filter(e => e.emailType==='general'),
+      cancellation: data.filter(e => e.emailType === 'cancellation'),
+      change:       data.filter(e => e.emailType === 'change'),
+      general:      data.filter(e => e.emailType === 'general'),
     };
 
     const chips = [
-      { key:'all',          label:'All',           emoji:''  },
-      { key:'cancellation', label:'Cancellations', emoji:'🚨', cls:'cancel-chip' },
-      { key:'change',       label:'Changes',       emoji:'🔄', cls:'change-chip' },
-      { key:'general',      label:'General',       emoji:'📧' },
+      { key: 'all',          label: 'All',           emoji: ''   },
+      { key: 'cancellation', label: 'Cancellations', emoji: '🚨', cls: 'cancel-chip' },
+      { key: 'change',       label: 'Changes',       emoji: '🔄', cls: 'change-chip' },
+      { key: 'general',      label: 'General',       emoji: '📧' },
     ];
 
     document.getElementById('filterRow').innerHTML = chips.map(c => `
-      <span class="chip ${c.cls||''} ${c.key==='all'?'active':''}"
+      <span class="chip ${c.cls || ''} ${c.key === 'all' ? 'active' : ''}"
             onclick="applyFilter('${c.key}')" id="chip-${c.key}">
         ${c.emoji} ${c.label}
         <span class="chip-count">${types[c.key].length}</span>
@@ -449,7 +463,7 @@
 
   function applyFilter(key) {
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-    document.getElementById('chip-'+key).classList.add('active');
+    document.getElementById('chip-' + key).classList.add('active');
     renderTable(window._detailData[key]);
   }
 
@@ -460,29 +474,28 @@
 
   function renderTable(data) {
     const wrap = document.getElementById('tableWrap');
-    if (!data || data.length===0) {
+    if (!data || data.length === 0) {
       wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">🎉</div><p>Nothing here — you're all caught up!</p></div>`;
       return;
     }
 
     const rows = data.map(d => {
-      const rowClass  = d.emailType==='cancellation' ? 'cancel-row' : d.emailType==='change' ? 'change-row' : '';
-      const tagClass  = `tag-${d.emailType||'general'}`;
-      const tagLabel  = d.emailType==='cancellation' ? '🚨 Cancellation' : d.emailType==='change' ? '🔄 Change' : '📧 General';
-      const statusCls = 'badge-'+(d.formStatus||'open').toLowerCase().replace(/[^a-z]/g,'');
-      const dateStr   = d.date ? new Date(d.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
+      const rowClass  = d.emailType === 'cancellation' ? 'cancel-row' : d.emailType === 'change' ? 'change-row' : '';
+      const tagClass  = `tag-${d.emailType || 'general'}`;
+      const tagLabel  = d.emailType === 'cancellation' ? '🚨 Cancellation' : d.emailType === 'change' ? '🔄 Change' : '📧 General';
+      const statusCls = 'badge-' + (d.formStatus || 'open').toLowerCase().replace(/[^a-z]/g, '');
+      const dateStr   = d.date ? new Date(d.date).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '-';
       const refHtml   = d.bookingRef ? `<span class="ref-pill">${d.bookingRef}</span>` : `<span class="ref-pill empty">—</span>`;
-      // Safely encode subject for data attribute — handles all special chars
-      const safeAttr  = (d.subject||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      const safeAttr  = (d.subject || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
       return `
         <tr class="${rowClass}">
           <td><span class="type-tag ${tagClass}">${tagLabel}</span></td>
-          <td style="font-family:'Courier New',monospace;font-size:11px;white-space:nowrap;">${d.msgId||'-'}</td>
-          <td class="td-truncate" title="${d.from||''}">${d.from||'-'}</td>
+          <td style="font-family:'Courier New',monospace;font-size:11px;white-space:nowrap;">${d.msgId || '-'}</td>
+          <td class="td-truncate" title="${d.from || ''}">${d.from || '-'}</td>
           <td>
             <div class="subject-cell">
-              <span class="subject-text" title="${safeAttr}">${d.subject||'-'}</span>
+              <span class="subject-text" title="${safeAttr}">${d.subject || '-'}</span>
               <button class="copy-btn js-copy-subject" data-subject="${safeAttr}" title="Copy full subject">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="5" y="5" width="9" height="9" rx="1.5"/>
@@ -509,13 +522,11 @@
         <tbody>${rows}</tbody>
       </table>`;
 
-    // Attach click handlers after DOM is rendered — reads data-subject attribute
     wrap.querySelectorAll('.js-copy-subject').forEach(btn => {
       btn.addEventListener('click', () => copySubject(btn.dataset.subject));
     });
   }
 
-  // ── Keep-alive ────────────────────────────────────────────────────────
   setInterval(() => location.reload(), 5 * 60 * 1000);
   setInterval(() => document.body.dispatchEvent(new MouseEvent('mousemove', {
     bubbles: true,
